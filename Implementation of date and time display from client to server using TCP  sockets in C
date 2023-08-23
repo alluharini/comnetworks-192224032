@@ -1,0 +1,116 @@
+SERVER SIDE
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <arpa/inet.h>
+
+int main() {
+    int serverSocket, clientSocket;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t addrLen = sizeof(clientAddr);
+    char buffer[1024];
+    time_t currentTime;
+    struct tm *timeInfo;
+    char timeString[50];
+
+    // Create socket
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == -1) {
+        perror("Error creating socket");
+        exit(1);
+    }
+
+    // Configure server address
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(12345); // Choose any available port
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    // Bind socket
+    if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1) {
+        perror("Error binding");
+        exit(1);
+    }
+
+    // Listen for incoming connections
+    if (listen(serverSocket, 5) == -1) {
+        perror("Error listening");
+        exit(1);
+    }
+
+    printf("Server is listening...\n");
+
+    // Accept client connection
+    clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &addrLen);
+    if (clientSocket == -1) {
+        perror("Error accepting connection");
+        exit(1);
+    }
+
+    // Get current time
+    currentTime = time(NULL);
+    timeInfo = localtime(&currentTime);
+    strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", timeInfo);
+
+    // Send time to client
+    send(clientSocket, timeString, strlen(timeString), 0);
+
+    printf("Time sent to client: %s\n", timeString);
+
+    close(clientSocket);
+    close(serverSocket);
+
+    return 0;
+}
+*************************************************
+
+CLIENT SIDE
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+
+int main() {
+    int clientSocket;
+    struct sockaddr_in serverAddr;
+    char buffer[1024];
+
+    // Create socket
+    clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (clientSocket == -1) {
+        perror("Error creating socket");
+        exit(1);
+    }
+
+    // Configure server address
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(12345); // Use the same port as the server
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // Server IP address
+
+    // Connect to server
+    if (connect(clientSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1) {
+        perror("Error connecting to server");
+        exit(1);
+    }
+
+    // Receive time from server
+    recv(clientSocket, buffer, sizeof(buffer), 0);
+
+    printf("Received time from server: %s\n", buffer);
+
+    close(clientSocket);
+
+    return 0;
+}
+*********************
+
+OUTPUT:
+SERVER SIDE:
+Server is listening...
+Time sent to client: 2023-08-23 15:30:45
+
+CLIENT SIDE:
+Received time from server: 2023-08-23 15:30:45
+
