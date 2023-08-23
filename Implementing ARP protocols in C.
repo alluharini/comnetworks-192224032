@@ -1,0 +1,44 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Structure to represent an ARP entry
+struct ArpEntry {
+    char ip[16];   // IP address (string representation)
+    char mac[18];  // MAC address (string representation)
+};
+
+// Function to simulate ARP request
+void sendArpRequest(const char* targetIP) {
+    printf("Sending ARP request for IP: %s\n", targetIP);
+}
+
+// Function to handle ARP response
+void handleArpResponse(const char* ip, const char* mac) {
+    printf("Received ARP response: IP: %s, MAC: %s\n", ip, mac);
+
+  
+}
+
+int main() {
+    // Simulated ARP cache as an array of ArpEntry structures
+    struct ArpEntry arpCache[10];
+    int arpCacheSize = 0;
+
+    // Simulate receiving an ARP response and adding to cache
+    handleArpResponse("192.168.1.1", "AA:BB:CC:DD:EE:FF");
+    handleArpResponse("192.168.1.2", "11:22:33:44:55:66");
+
+    // Simulate sending an ARP request
+    sendArpRequest("192.168.1.3");
+
+    return 0;
+}
+
+*****************************************************************************************************************
+
+output:
+
+Received ARP response: IP: 192.168.1.1, MAC: AA:BB:CC:DD:EE:FF
+Received ARP response: IP: 192.168.1.2, MAC: 11:22:33:44:55:66
+Sending ARP request for IP: 192.168.1.3
