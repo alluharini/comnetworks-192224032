@@ -1,0 +1,138 @@
+Server (Receiver) Side:
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+
+#define PORT 12345
+#define BUFFER_SIZE 1024
+
+int main() {
+    int serverSocket, clientSocket;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t addrLen = sizeof(clientAddr);
+
+    // Create socket
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket < 0) {
+        perror("Socket creation error");
+        exit(EXIT_FAILURE);
+    }
+
+    // Configure server address
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(PORT);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    // Bind socket
+    if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+        perror("Bind error");
+        exit(EXIT_FAILURE);
+    }
+
+    // Listen for incoming connections
+    if (listen(serverSocket, 1) < 0) {
+        perror("Listen error");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Server listening on port %d...\n", PORT);
+
+    // Accept incoming connection
+    clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &addrLen);
+    if (clientSocket < 0) {
+        perror("Accept error");
+        exit(EXIT_FAILURE);
+    }
+
+    // Receive file from client
+    FILE *receivedFile = fopen("received_file.txt", "wb");
+    if (receivedFile == NULL) {
+        perror("File opening error");
+        exit(EXIT_FAILURE);
+    }
+
+    char buffer[BUFFER_SIZE];
+    int bytesRead;
+    while ((bytesRead = recv(clientSocket, buffer, BUFFER_SIZE, 0)) > 0) {
+        fwrite(buffer, 1, bytesRead, receivedFile);
+    }
+
+    printf("File received successfully.\n");
+    fclose(receivedFile);
+    close(clientSocket);
+    close(serverSocket);
+
+    return 0;
+}
+
+********************************************************************************************************
+
+Client (Sender) Side:
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+
+#define SERVER_IP "127.0.0.1"
+#define PORT 12345
+#define BUFFER_SIZE 1024
+
+int main() {
+    int clientSocket;
+    struct sockaddr_in serverAddr;
+
+    // Create socket
+    clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (clientSocket < 0) {
+        perror("Socket creation error");
+        exit(EXIT_FAILURE);
+    }
+
+    // Configure server address
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(PORT);
+    serverAddr.sin_addr.s_addr = inet_addr(SERVER_IP);
+
+    // Connect to server
+    if (connect(clientSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+        perror("Connection error");
+        exit(EXIT_FAILURE);
+    }
+
+    // Open and send file
+    FILE *fileToSend = fopen("file_to_send.txt", "rb");
+    if (fileToSend == NULL) {
+        perror("File opening error");
+        exit(EXIT_FAILURE);
+    }
+
+    char buffer[BUFFER_SIZE];
+    int bytesRead;
+    while ((bytesRead = fread(buffer, 1, BUFFER_SIZE, fileToSend)) > 0) {
+        send(clientSocket, buffer, bytesRead, 0);
+    }
+
+    printf("File sent successfully.\n");
+
+    fclose(fileToSend);
+    close(clientSocket);
+
+    return 0;
+}
+
+***********************************************************************************************
+
+Server Side Output:
+
+Server listening on port 12345...
+File received successfully.
+
+****************************************************************************************************
+
+client Side Output:
+
+File sent successfully.
+
