@@ -1,0 +1,52 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <netdb.h>
+
+int main() {
+    const char *dnsServer = "8.8.8.8";  // Google's Public DNS server
+    const char *hostname = "www.example.com";
+
+    struct addrinfo hints, *result, *rp;
+    int status;
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;    // Allow IPv4 or IPv6
+    hints.ai_socktype = SOCK_STREAM; // TCP socket
+
+    // Resolve the hostname using the specified DNS server
+    status = getaddrinfo(hostname, NULL, &hints, &result);
+    if (status != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+        return 1;
+    }
+
+    // Iterate through the results and print IP addresses
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        char ipstr[INET6_ADDRSTRLEN];
+        void *addr;
+
+        if (rp->ai_family == AF_INET) { // IPv4
+            struct sockaddr_in *ipv4 = (struct sockaddr_in *)rp->ai_addr;
+            addr = &(ipv4->sin_addr);
+        } else { // IPv6
+            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)rp->ai_addr;
+            addr = &(ipv6->sin6_addr);
+        }
+
+        inet_ntop(rp->ai_family, addr, ipstr, sizeof(ipstr));
+        printf("Resolved IP address: %s\n", ipstr);
+    }
+
+    freeaddrinfo(result); // Free the linked list
+
+    return 0;
+}
+
+**************************
+
+OUTPUT:
+
+Assuming you're using Google's Public DNS server (8.8.8.8) and resolving the hostname "www.example.com", the output  look something like this:
+
+Resolved IP address: 93.184.216.34
