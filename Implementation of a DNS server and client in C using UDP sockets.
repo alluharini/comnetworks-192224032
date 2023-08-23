@@ -1,0 +1,106 @@
+DNS SERVEER
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+int main() {
+    int serverSocket;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t addrLen = sizeof(clientAddr);
+    char buffer[1024];
+    char response[1024] = "www.example.com -> 192.168.1.1"; // Sample DNS response
+
+    // Create socket
+    serverSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (serverSocket == -1) {
+        perror("Error creating socket");
+        exit(1);
+    }
+
+    // Configure server address
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(12345); // Choose any available port
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    // Bind socket
+    if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1) {
+        perror("Error binding");
+        exit(1);
+    }
+
+    printf("DNS Server is listening...\n");
+
+    while (1) {
+        // Receive DNS query from client
+        recvfrom(serverSocket, buffer, sizeof(buffer), 0, (struct sockaddr *)&clientAddr, &addrLen);
+        printf("Received DNS query: %s\n", buffer);
+
+        // Send DNS response to client
+        sendto(serverSocket, response, strlen(response), 0, (struct sockaddr *)&clientAddr, addrLen);
+        printf("Sent DNS response: %s\n", response);
+    }
+
+    close(serverSocket);
+
+    return 0;
+}
+
+***********************
+
+DNS CLIENT
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+int main() {
+    int clientSocket;
+    struct sockaddr_in serverAddr;
+    char buffer[1024];
+    char query[] = "www.example.com"; // Sample DNS query
+
+    // Create socket
+    clientSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (clientSocket == -1) {
+        perror("Error creating socket");
+        exit(1);
+    }
+
+    // Configure server address
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(12345); // Use the same port as the server
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // Server IP address
+
+    // Send DNS query to server
+    sendto(clientSocket, query, strlen(query), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+
+    // Receive DNS response from server
+    recvfrom(clientSocket, buffer, sizeof(buffer), 0, NULL, NULL);
+
+    printf("Received DNS response: %s\n", buffer);
+
+    close(clientSocket);
+
+    return 0;
+}
+
+*********************************************
+
+OUTPUT:
+SERVER SIDE:
+
+DNS Server is listening...
+Received DNS query: www.example.com
+Sent DNS response: www.example.com -> 192.168.1.1
+
+CLIENT SIDE:
+
+Received DNS response: www.example.com -> 192.168.1.1
+
