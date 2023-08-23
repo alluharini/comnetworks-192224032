@@ -1,0 +1,204 @@
+TCP Chat Server:
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <pthread.h>
+
+#define MAX_CLIENTS 10
+#define BUFFER_SIZE 1024
+
+int clientCount = 0;
+int clientSockets[MAX_CLIENTS];
+pthread_t tid[MAX_CLIENTS];
+pthread_mutex_t mutex;
+
+void *handleClient(void *arg) {
+    int clientSocket = *((int *)arg);
+    char buffer[BUFFER_SIZE];
+
+    while (1) {
+        memset(buffer, 0, sizeof(buffer));
+        int bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
+        if (bytesRead <= 0) {
+            pthread_mutex_lock(&mutex);
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                if (clientSockets[i] == clientSocket) {
+                    clientSockets[i] = -1;
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&mutex);
+            printf("Client disconnected\n");
+            break;
+        }
+
+        pthread_mutex_lock(&mutex);
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (clientSockets[i] != -1 && clientSockets[i] != clientSocket) {
+                send(clientSockets[i], buffer, bytesRead, 0);
+            }
+        }
+        pthread_mutex_unlock(&mutex);
+    }
+
+    close(clientSocket);
+    return NULL;
+}
+
+int main() {
+    int serverSocket, clientSocket;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t addrLen = sizeof(clientAddr);
+
+    // Create socket
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == -1) {
+        perror("Error creating socket");
+        exit(1);
+    }
+
+    // Configure server address
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(12345); // Choose any available port
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    // Bind socket
+    if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1) {
+        perror("Error binding");
+        exit(1);
+    }
+
+    // Listen for incoming connections
+    if (listen(serverSocket, 5) == -1) {
+        perror("Error listening");
+        exit(1);
+    }
+
+    printf("Chat Server is listening...\n");
+
+    pthread_mutex_init(&mutex, NULL);
+
+    while (1) {
+        // Accept client connection
+        clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &addrLen);
+        if (clientSocket == -1) {
+            perror("Error accepting connection");
+            exit(1);
+        }
+
+        pthread_mutex_lock(&mutex);
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (clientSockets[i] == -1) {
+                clientSockets[i] = clientSocket;
+                pthread_create(&tid[i], NULL, handleClient, &clientSockets[i]);
+                break;
+            }
+        }
+        pthread_mutex_unlock(&mutex);
+
+        printf("Client connected\n");
+    }
+
+    close(serverSocket);
+    pthread_mutex_destroy(&mutex);
+
+    return 0;
+}
+
+******************************
+
+TCP Chat Client:
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <pthread.h>
+
+#define BUFFER_SIZE 1024
+
+void *receiveMessages(void *arg) {
+    int clientSocket = *((int *)arg);
+    char buffer[BUFFER_SIZE];
+
+    while (1) {
+        memset(buffer, 0, sizeof(buffer));
+        int bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
+        if (bytesRead <= 0) {
+            printf("Server disconnected\n");
+            break;
+        }
+
+        printf("%s", buffer);
+    }
+
+    return NULL;
+}
+
+int main() {
+    int clientSocket;
+    struct sockaddr_in serverAddr;
+    char buffer[BUFFER_SIZE];
+    pthread_t tid;
+
+    // Create socket
+    clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (clientSocket == -1) {
+        perror("Error creating socket");
+        exit(1);
+    }
+
+    // Configure server address
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(12345); // Use the same port as the server
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // Server IP address
+
+    // Connect to server
+    if (connect(clientSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1) {
+        perror("Error connecting to server");
+        exit(1);
+    }
+
+    printf("Connected to the Chat Server\n");
+
+    pthread_create(&tid, NULL, receiveMessages, &clientSocket);
+
+    while (1) {
+        fgets(buffer, sizeof(buffer), stdin);
+        send(clientSocket, buffer, strlen(buffer), 0);
+    }
+
+    close(clientSocket);
+
+    return 0;
+}
+
+******************************************************************************
+
+TCP Chat Server Output:
+
+Chat Server is listening...
+Client connected
+Client connected
+
+*******************************************************************************
+
+TCP Chat Client 1 Output:
+Connected to the Chat Server
+Hello, this is client 1.
+[Client 2]: Hi there!
+
+*****************************************************************************
+
+TCP Chat Client 2 Output:
+
+Connected to the Chat Server
+[Client 1]: Hello, this is client 1.
+Hello from client 2.
+
