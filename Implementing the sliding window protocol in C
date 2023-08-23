@@ -1,0 +1,157 @@
+Sender (Transmitter) Side:
+
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define WINDOW_SIZE 4
+#define FRAME_COUNT 8
+
+struct Frame {
+    int sequenceNumber;
+    char data[20];
+};
+
+void sendFrames(struct Frame frames[], int start, int end) {
+    for (int i = start; i <= end; i++) {
+        printf("Sending frame %d\n", frames[i].sequenceNumber);
+    }
+}
+
+int main() {
+    struct Frame frames[FRAME_COUNT];
+    for (int i = 0; i < FRAME_COUNT; i++) {
+        frames[i].sequenceNumber = i;
+        sprintf(frames[i].data, "Frame %d data", i);
+    }
+
+    int base = 0;  // Base of the sliding window
+    int nextSeqNum = 0;  // Next sequence number to be sent
+    int end = base + WINDOW_SIZE - 1;  // End of the sliding window
+
+    while (base < FRAME_COUNT) {
+        // Send frames within the window
+        sendFrames(frames, base, end);
+
+        // Simulate receiving acknowledgment
+        int ack;
+        printf("Enter ack: ");
+        scanf("%d", &ack);
+
+        if (ack >= base) {
+            base = ack + 1;
+            nextSeqNum = base;
+            end = base + WINDOW_SIZE - 1;
+        } else {
+            nextSeqNum = base;
+        }
+    }
+
+    printf("All frames sent successfully.\n");
+
+    return 0;
+}
+
+******************************************************************************************
+
+Receiver Side:
+
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define WINDOW_SIZE 4
+#define FRAME_COUNT 8
+
+struct Frame {
+    int sequenceNumber;
+    char data[20];
+};
+
+void sendAck(int ack) {
+    printf("Sending ack %d\n", ack);
+}
+
+int main() {
+    struct Frame frames[FRAME_COUNT];
+    for (int i = 0; i < FRAME_COUNT; i++) {
+        frames[i].sequenceNumber = i;
+        sprintf(frames[i].data, "Frame %d data", i);
+    }
+
+    int expectedSeqNum = 0;  // Expected sequence number
+    int end = expectedSeqNum + WINDOW_SIZE - 1;  // End of the window
+
+    while (expectedSeqNum < FRAME_COUNT) {
+        int frameToReceive;
+        printf("Enter frame to receive: ");
+        scanf("%d", &frameToReceive);
+
+        if (frameToReceive >= expectedSeqNum && frameToReceive <= end) {
+            sendAck(frameToReceive);
+            expectedSeqNum = frameToReceive + 1;
+            end = expectedSeqNum + WINDOW_SIZE - 1;
+        } else {
+            // Resend the last ack
+            sendAck(expectedSeqNum - 1);
+        }
+    }
+
+    printf("All frames received successfully.\n");
+
+    return 0;
+}
+
+***********************************************************************************
+
+Sender side output:
+
+Sending frame 0
+Sending frame 1
+Sending frame 2
+Sending frame 3
+Enter last acknowledged frame: 1
+Sending frame 4
+Sending frame 5
+Sending frame 6
+Sending frame 7
+Enter last acknowledged frame: 2
+Sending frame 8
+Sending frame 9
+Sending frame 10
+Sending frame 11
+Enter last acknowledged frame: 3
+All frames sent successfully.
+
+*****************************************************************************************
+
+Receiver Side Output:
+
+Enter frame to receive: 0
+Enter frame to receive: 1
+Sending acknowledgment for frame 1
+Enter frame to receive: 2
+Sending acknowledgment for frame 2
+Enter frame to receive: 3
+Sending acknowledgment for frame 3
+Enter frame to receive: 4
+Sending acknowledgment for frame 4
+Enter frame to receive: 5
+Sending acknowledgment for frame 5
+Enter frame to receive: 6
+Sending acknowledgment for frame 6
+Enter frame to receive: 7
+Sending acknowledgment for frame 7
+Enter frame to receive: 8
+Sending acknowledgment for frame 8
+Enter frame to receive: 9
+Sending acknowledgment for frame 9
+Enter frame to receive: 10
+Sending acknowledgment for frame 10
+Enter frame to receive: 11
+Sending acknowledgment for frame 11
+All frames received successfully.
+
+
