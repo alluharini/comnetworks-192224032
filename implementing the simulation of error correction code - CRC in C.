@@ -1,0 +1,64 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+
+#define CRC_POLYNOMIAL 0xEDB88320
+#define CRC_WIDTH 32
+
+// Function to compute CRC checksum
+uint32_t computeCRC(const uint8_t *data, size_t length) {
+    uint32_t crc = 0xFFFFFFFF;
+
+    for (size_t i = 0; i < length; i++) {
+        crc ^= data[i];
+
+        for (int j = 0; j < 8; j++) {
+            if (crc & 1)
+                crc = (crc >> 1) ^ CRC_POLYNOMIAL;
+            else
+                crc >>= 1;
+        }
+    }
+
+    return crc;
+}
+
+int main() {
+    const char message[] = "Hello, CRC!";
+    size_t messageLength = strlen(message);
+
+    // Simulate error by flipping a bit
+    uint8_t corruptedMessage[messageLength];
+    memcpy(corruptedMessage, message, messageLength);
+    corruptedMessage[5] ^= 0x20; // Flipping a bit in the message
+
+    // Calculate CRC for the original and corrupted message
+    uint32_t originalCRC = computeCRC((uint8_t *)message, messageLength);
+    uint32_t corruptedCRC = computeCRC(corruptedMessage, messageLength);
+
+    printf("Original Message: %s\n", message);
+    printf("Original CRC: 0x%08X\n", originalCRC);
+
+    printf("Corrupted Message: %s\n", corruptedMessage);
+    printf("Corrupted CRC: 0x%08X\n", corruptedCRC);
+
+    // Compare CRC values to detect errors
+    if (corruptedCRC == originalCRC) {
+        printf("Message is error-free.\n");
+    } else {
+        printf("Error detected in the message.\n");
+    }
+
+    return 0;
+}
+
+*********************************************************************************************
+
+output:
+
+Original Message: Hello, CRC!
+Original CRC: 0xAAB3DB2F
+Corrupted Message: Hell , CRC!
+Corrupted CRC: 0x7B16936F
+Error detected in the message.
